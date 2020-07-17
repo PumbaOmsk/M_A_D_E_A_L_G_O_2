@@ -1,0 +1,209 @@
+/**
+ * Введенский Вячеслав В. MADE-ML-22
+ *
+
+ */
+#include <iostream>
+#include <vector>
+#include <random>
+
+using namespace std;
+struct Node {
+    long long localValue = 0;
+    long long globalValue = 0;
+    long long localLazy = 0;
+    long long globalLazy = 0;
+};
+
+struct SegmentTree {
+    int n;
+    int bound = 1;
+    long long size = 0;
+    vector<Node> T;
+
+    SegmentTree() = default;
+
+    void init(int n_) {
+        n = n_;
+        while (bound < n) {
+            bound = bound << 1;
+        }
+        size = 2 * bound - 1;
+        T = vector<Node>(size);
+    }
+
+    Node &operator[](int i) {
+        return T[bound - 1 + i];
+    }
+
+private:
+    void
+    update(int vx, int vy, int xl, int xr, int yl, int yr, int x1, int y1, int x2, int y2, double dw, bool covered) {
+        if (y1 <= yl && yr <= y2) {
+            if (covered) {
+                T[vy].globalLazy += dw;
+                T[vy].globalValue += dw * (xr - xl + 1) * (yr - yl + 1);
+            } else {
+                T[vy].localLazy += dw;
+                T[vy].localValue += dw * (xr - xl + 1) * (yr - yl + 1);
+            }
+            return;
+        }
+        if (yr < y1 || y2 < yl)
+            return;
+        int ym = (yl + yr) >> 1;
+
+        auto left = 2 * vy + 1;
+        auto right = 2 * vy + 2;
+
+        update(vx, left, xl, xr, yl, ym, x1, y1, x2, y2, dw, covered);
+        update(vx, right, xl, xr, ym + 1, yr, x1, y1, x2, y2, dw, covered);
+
+        T[vy].localValue = T[left].localValue + T[right].localValue + (T[vy].localLazy) * (xr - xl + 1) * (yr - yl + 1);
+        T[vy].globalValue = T[left].globalValue + T[right].globalValue +
+                            (T[vy].globalLazy) * (xr - xl + 1) * (yr - yl + 1);
+    }
+
+    long long rsq(int vx, int vy, int xl, int xr, int yl, int yr, int x1, int y1, int x2, int y2, long long lazy) {
+        if (y1 <= yl && yr <= y2) {
+            if (x1 <= xl && xr <= x2) {
+                return T[vy].localValue + T[vy].globalValue + lazy * (xr - xl + 1) * (yr - yl + 1);
+            }
+            if (xl > x2 || xr < x1)
+                return 0;
+            double scaled_value = T[vy].globalValue * 1.0 * (x2 - x1 + 1) / (xr - xl + 1);
+            return scaled_value + lazy * (x2 - x1 + 1) * (yr - yl + 1);
+        }
+        if (yl > y2 || yr < y1)
+            return 0;
+        int ym = (yl + yr) >> 1;
+        if (x1 <= xl && xr <= x2) {
+            return rsq(vx, 2 * vy + 1, xl, xr, yl, ym, x1, y1, x2, y2, lazy + T[vy].globalLazy + T[vy].localLazy) +
+                    rsq(vx, 2 * vy + 2, xl, xr, ym + 1, yr, x1, y1, x2, y2,
+                        lazy + T[vy].globalLazy + T[vy].localLazy);
+        }
+        if (xl > x2 || xr < x1)
+            return 0;
+
+        return rsq(vx, 2 * vy + 1, xl, xr, yl, ym, x1, y1, x2, y2, lazy + T[vy].globalLazy) +
+                rsq(vx, 2 * vy + 1, xl, xr, ym + 1, yr, x1, y1, x2, y2, lazy + T[vy].globalLazy);
+
+    }
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+struct SegmentTree2d {
+    int ny;
+    int nx;
+    int bound = 1;
+    long long size = 0;
+    vector<SegmentTree> T;
+
+    explicit SegmentTree2d(int x, int y) : nx(x) {
+        while (bound < nx) {
+            bound = bound << 1;
+        }
+        size = 2 * bound - 1;
+        ny = y;
+        T = vector<SegmentTree>(size);
+        for (int i = 0; i < size; ++i) {
+            T[i].init(ny);
+        }
+
+    }
+
+    void update(int x1, int y1, int x2, int y2, long long dw) {
+        update(0, 0, 0, bound - 1, x1, y1, x2, y2, dw);
+    }
+
+    long long rsq(int x1, int y1, int x2, int y2) {
+        return rsq(0, 0, 0, bound - 1, x1, y1, x2, y2);
+    }
+
+private:
+
+    long long rsq(int vx, int vy, int l, int r, int x1, int y1, int x2, int y2) {
+        if (x1 <= l && r <= x2) {
+            return T[vx].rsq(vx, 0, l, r, 0, T[vx].bound - 1, x1, y1, x2, y2, 0);
+        }
+        if (l > x2 || r < x1)
+            return 0;
+        int xm = (l + r) >> 1;
+        int tx1 = max(x1, l);
+        int tx2 = min(x2, r);
+        return T[vx].rsq(vx, 0, l, r, 0, T[vx].bound - 1, tx1, y1, tx2, y2, 0) +
+                rsq(2 * vx + 1, vy, l, xm, x1, y1, x2, y2) +
+                rsq(2 * vx + 2, vy, xm + 1, r, x1, y1, x2, y2);
+
+    }
+
+    void update(int vx, int vy, int l, int r, int x1, int y1, int x2, int y2, long long dw) {
+        if (x1 <= l && r <= x2) {
+            T[vx].update(vx, 0, l, r, 0, T[vx].bound - 1, x1, y1, x2, y2, dw, true);
+            return;
+        }
+        if (l > x2 || r < x1) {
+            return;
+        }
+        int xm = (l + r) >> 1;
+        update(2 * vx + 1, 0, l, xm, x1, y1, x2, y2, dw);
+        update(2 * vx + 2, 0, xm + 1, r, x1, y1, x2, y2, dw);
+
+        int tx1 = max(x1, l);
+        int tx2 = min(x2, r);
+        double sdw = dw * ((1. * (tx2 - tx1 + 1)) / (r - l + 1));
+        T[vx].update(vx, 0, l, r, 0, T[vx].bound - 1, tx1, y1, tx2, y2, sdw, false);
+    }
+};
+
+int main() {
+    int x, y;
+    cin >> x >> y;
+    int n;
+    cin >> n;
+
+    SegmentTree2d tree(x, y);
+
+    for (int row = 0; row < n; ++row) {
+        int command, x1, y1, x2, y2;;
+        cin >> command >> x1 >> y1 >> x2 >> y2;
+        if (command == 1) {
+            long w;
+            cin >> w;
+            tree.update(x1 - 1, y1 - 1, x2 - 1, y2 - 1, w);
+        } else {
+            cout << tree.rsq(x1 - 1, y1 - 1, x2 - 1, y2 - 1) << endl;
+        }
+    }
+    return 0;
+}
+/**
+8 8
+3
+1 3 3 8 8 2
+1 1 1 2 2 1
+2 2 2 3 3
+
+3
+
+8 8
+3
+1 3 3 2
+1 2 2 4
+2 2 2 3 3
+
+2 2
+5
+1 1 1 2 2 1
+1 2 2 2 2 2
+2 1 1 1 1
+2 2 2 2 2
+2 1 1 2 2
+
+2 2
+2
+1 2 2 2 2 2
+2 2 2 2 2
+
+
+*/

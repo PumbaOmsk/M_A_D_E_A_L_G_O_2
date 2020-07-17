@@ -1,0 +1,131 @@
+/**
+ * Введенский Вячеслав В. MADE-ML-22
+ *
+F. RMQ наоборот
+rmq.in, rmq.out
+Рассмотрим массив a[1..n]. Пусть Q(i, j) — ответ на запрос о нахождении минимума среди чисел a[i], ..., a[j].
+ Вам даны несколько запросов и ответы на них. Восстановите исходный массив.
+Входные данные: Первая строка входного файла содержит число n — размер массива, и m — число запросов (1 ≤ n, m ≤ 100 000).
+ Следующие m строк содержат по три целых числа i, j и q, означающих, что Q(i, j) = q (1 ≤ i ≤ j ≤ n,  - 2^31 ≤ q ≤ 2^31 - 1).
+Выходные данные: Если искомого массива не существует, выведите строку «inconsistent».
+В противном случае в первую строку выходного файла выведите «consistent». Во вторую строку выходного файла выведите
+ элементы массива. Элементами массива должны быть целые числа в интервале от  - 2^31 до 2^31 - 1 включительно.
+ Если решений несколько, выведите любое.
+ */
+//#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+
+using namespace std;
+/**
+ * Максимальный элемент массива.
+ */
+const long long INF = static_cast<const long long int>(1e18);
+
+bool compareA(const vector<long long> &e1,const vector<long long> &e2){
+    if(e1[0]==e2[0])
+        return e1[2]<e2[2];
+    return e1[0]<e2[0];
+}
+bool compareC(const vector<long long> &e1,const vector<long long> &e2){
+    if(e1[2]==e2[2])
+        return e1[0]<e2[0];
+    return e1[2]<e2[2];
+}
+pair<bool, vector<long long >> FindA(vector<vector<long long>> &q,int n) {
+    sort(q.begin(),q.end(),compareC);
+    vector<long long> check(n,INF);
+    auto m = q.size();
+    for(int i=0; i < m; i++){
+        auto begin = q[i][0];
+        auto endC = q[i][1];
+        auto elem = q[i][2];
+        bool inconsistent = true;
+        for (auto j = begin; j <=endC ; ++j) {
+            if(check[j]>=elem) {
+                check[j] = elem;
+                inconsistent = false;
+            }
+        }
+        if(inconsistent){
+            return make_pair(false, check);
+        }
+    }
+
+    sort(q.begin(),q.end(),compareA);
+    vector<long long> a(n,INF);
+    for(int i=0; i < m; i++){
+        auto begin = q[i][0];
+//        auto endA = min(q[i][1],(i+1 < m) ? q[i + 1][0] - 1 : q[i][1]);
+        auto endA = (i+1 < m) ? q[i + 1][0] - 1 : q[i][1];
+        auto elem = q[i][2];
+        for (auto j = begin; j <=endA ; ++j) {
+            if(a[j]==INF) {
+                a[j] = elem;
+            }
+        }
+    }
+    return make_pair(true,a);
+}
+
+#define fin cin
+#define fout cout
+int main() {
+    int n, m;
+//    ifstream fin("rmq.in");
+//    ofstream fout("rmq.out");
+
+
+    fin >> n >> m;
+    vector<vector<long long>> q(m,vector<long long>(3));
+    for (int i = 0; i < m; ++i) {
+        fin>>q[i][0]>>q[i][1]>>q[i][2];
+        q[i][0]--;
+        q[i][1]--;
+    }
+    auto a = FindA(q,n);
+    if(a.first){
+        fout<<"consistent"<<"\n";
+        for (auto elem:a.second) {
+            fout<<elem<<" ";
+        }
+    } else {
+        fout<<"inconsistent"<<"\n";
+    }
+    fout<<flush;
+    return 0;
+}
+/**
+3 2
+2 3 2
+1 2 1
+
+consistent
+1 2 2
+
+3 3
+1 2 1
+1 1 2
+2 3 2
+inconsistent
+
+2 2
+1 2 2
+1 2 1
+
+ 3 3
+ 1 2 1
+ 2 3 2
+ 3 3 1
+
+ 5 2
+ 1 1 1
+ 5 5 2
+
+ 5 3
+ 1 5 1
+ 3 5 2
+ 4 4 3
+*/

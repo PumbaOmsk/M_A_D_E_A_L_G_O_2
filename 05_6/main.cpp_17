@@ -1,0 +1,251 @@
+/**
+ * Введенский Вячеслав В. MADE-ML-22
+ *
+F. RMQ наоборот
+rmq.in, rmq.out
+Рассмотрим массив a[1..n]. Пусть Q(i, j) — ответ на запрос о нахождении минимума среди чисел a[i], ..., a[j].
+ Вам даны несколько запросов и ответы на них. Восстановите исходный массив.
+Входные данные: Первая строка входного файла содержит число n — размер массива, и m — число запросов (1 ≤ n, m ≤ 100 000).
+ Следующие m строк содержат по три целых числа i, j и q, означающих, что Q(i, j) = q (1 ≤ i ≤ j ≤ n,  - 2^31 ≤ q ≤ 2^31 - 1).
+Выходные данные: Если искомого массива не существует, выведите строку «inconsistent».
+В противном случае в первую строку выходного файла выведите «consistent». Во вторую строку выходного файла выведите
+ элементы массива. Элементами массива должны быть целые числа в интервале от  - 2^31 до 2^31 - 1 включительно.
+ Если решений несколько, выведите любое.
+ */
+//#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+
+using namespace std;
+/**
+ * Максимальный элемент массива.
+ */
+const long long INF = static_cast<const long long int>(1e18);
+const long long MAX_VALUE = (1LL<<31)-1;
+/**
+ * Максимальный элемент массива.
+ */
+const long long MOD = 1<<31;
+
+//bool compareA(const vector<long long> &e1,const vector<long long> &e2){
+//    if(e1[0]==e2[0])
+//        return e1[2]<e2[2];
+//    return e1[0]<e2[0];
+//}
+//bool compareC(const vector<long long> &e1,const vector<long long> &e2){
+//    if(e1[2]==e2[2])
+//        return e1[0]<e2[0];
+//    return e1[2]<e2[2];
+//}
+//pair<bool, vector<long long >> FindA(vector<vector<long long>> &q,int n) {
+//    sort(q.begin(),q.end(),compareC);
+//    vector<long long> check(n,INF);
+//    auto m = q.size();
+//    for(int i=0; i < m; i++){
+//        auto begin = q[i][0];
+//        auto endC = q[i][1];
+//        auto elem = q[i][2];
+//        bool inconsistent = true;
+//        for (auto j = begin; j <=endC ; ++j) {
+//            if(check[j]>=elem) {
+//                check[j] = elem;
+//                inconsistent = false;
+//            }
+//        }
+//        if(inconsistent){
+//            return make_pair(false, check);
+//        }
+//    }
+//
+//    sort(q.begin(),q.end(),compareA);
+//    vector<long long> a(n,INF);
+//    for(int i=0; i < m; i++){
+//        auto begin = q[i][0];
+////        auto endA = min(q[i][1],(i+1 < m) ? q[i + 1][0] - 1 : q[i][1]);
+//        auto endA = (i+1 < m) ? q[i + 1][0] - 1 : q[i][1];
+//        auto elem = q[i][2];
+//        for (auto j = begin; j <=endA ; ++j) {
+//            if(a[j]==INF) {
+//                a[j] = elem;
+//            }
+//        }
+//    }
+//    return make_pair(true,a);
+//}
+
+bool compare(const vector<long long> &e1,const vector<long long> &e2){
+    return e1[2]<e2[2];
+}
+
+vector<long long> CalcA(vector<vector<long long>> &q,int n) {
+    sort(q.begin(),q.end(),compare);
+    auto m = q.size();
+    vector<long long> a(n,MAX_VALUE);
+
+    for(int i=0; i < m; i++){
+        auto begin = q[i][0];
+        auto end = q[i][1];
+        auto elem = q[i][2];
+        for (auto j = begin; j <=end ; ++j) {
+          a[j] = elem;
+        }
+    }
+
+//    for (int i = 0; i < n; ++i) {
+//        for (int j = 0; j < m; ++j) {
+//            if(q[j][0]<=i && i<=q[j][1] && a[i]<q[j][2]){
+//                a[i]=q[j][2];
+//            }
+//        }
+//        if(a[i]==-INF)
+//            a[i] = MAX_VALUE;
+//    }
+    return a;
+}
+//vector<long long> CalcA(vector<vector<long long>> &q,int n) {
+//    auto m = q.size();
+//    vector<long long> a(n,-INF);
+//    for (int i = 0; i < n; ++i) {
+//        for (int j = 0; j < m; ++j) {
+//            if(q[j][0]<=i && i<=q[j][1] && a[i]<q[j][2]){
+//                a[i]=q[j][2];
+//            }
+//        }
+//        if(a[i]==-INF)
+//            a[i] = MAX_VALUE;
+//    }
+//    return a;
+//}
+
+/**
+ * Считаем SparseTable
+ * @param a вектор элементов.
+ * @return разряженая таблица.
+ */
+vector<vector<long long>> CalcTable(const vector<long long > &a) {
+    auto n = a.size();
+    long k_max = 1;
+    long temp = 2;
+    while (temp < n) {
+        temp = temp << 1;
+        k_max++;
+    }
+    vector<vector<long long>> table(n, vector<long long>(k_max));
+    for (int i = 0; i < n; ++i) {
+        table[i][0] = a[i];
+    }
+    for (int k = 1; k < k_max; ++k) {
+        long k2 = 1 << (k - 1);
+
+        for (int l = 0; l < n; ++l) {
+            long long m2 = MOD;
+            if (l + k2 < n)
+                m2 = table[l + k2][k - 1];
+            table[l][k] = min(table[l][k - 1], m2);
+        }
+    }
+    return table;
+}
+
+/**
+ * @param table разряженая таблица.
+ * @param u начало отрезка.
+ * @param v конец отрезка.
+ * @return min на отрезке.
+ */
+long long rmq(const vector<vector<long long>> &table, long u, long v) {
+    long l, r;
+    if (u < v) {
+        l = u;
+        r = v;
+    } else {
+        l = v;
+        r = u;
+    }
+    long k = 1;
+    long k2 = 2;
+    while (k2 < r - l + 1) {
+        k++;
+        k2 = k2 << 1;
+    }
+    k--;
+    k2 = k2 >> 1;
+    auto m1 = table[l][k];
+    auto m2 = table[r - k2 + 1][k];
+    return min(m1, m2);
+}
+
+bool check(const vector<long long> &a, const vector<vector<long long>> &q) {
+    auto table = CalcTable(a);
+    for (const auto &query : q) {
+        auto answer = rmq(table, (long) query[0], (long) query[1]);
+        if(answer!= query[2])
+            return false;
+    }
+    return true;
+}
+
+
+//#define fin cin
+//#define fout cout
+
+int main() {
+    int n, m;
+    ifstream fin("rmq.in");
+    ofstream fout("rmq.out");
+
+
+    fin >> n >> m;
+    vector<vector<long long>> q(m,vector<long long>(3));
+    for (int i = 0; i < m; ++i) {
+        fin>>q[i][0]>>q[i][1]>>q[i][2];
+        q[i][0]--;
+        q[i][1]--;
+    }
+    auto a = CalcA(q,n);
+    auto consistent = check(a,q);
+    if(consistent ){
+        fout<<"consistent"<<"\n";
+        for (auto elem:a) {
+            fout<<elem<<" ";
+        }
+    } else {
+        fout<<"inconsistent"<<"\n";
+    }
+    fout<<flush;
+    return 0;
+}
+/**
+3 2
+2 3 2
+1 2 1
+
+consistent
+1 2 2
+
+3 3
+1 2 1
+1 1 2
+2 3 2
+inconsistent
+
+2 2
+1 2 2
+1 2 1
+
+ 3 3
+ 1 2 1
+ 2 3 2
+ 3 3 1
+
+ 5 2
+ 1 1 1
+ 5 5 2
+
+ 5 3
+ 1 5 1
+ 3 5 2
+ 4 4 3
+*/

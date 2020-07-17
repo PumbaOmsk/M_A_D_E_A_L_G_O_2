@@ -1,0 +1,364 @@
+/**
+ * Введенский Вячеслав В. MADE-ML-22
+ *
+
+ */
+#include <iostream>
+#include <vector>
+#include <random>
+
+/**
+ * Максимальное, неопределенное значение.
+ */
+const long long INF = 9 * static_cast<long long>(1e18);
+
+using namespace std;
+
+struct SegmentTree {
+    int n;
+    int bound = 1;
+    long long size = 0;
+    vector<long long> T;
+//    vector<long long> updSet;
+    vector<long long> updAdd;
+
+    SegmentTree() {
+    }
+
+    SegmentTree(int n_) {
+        init(n_);
+    }
+
+    void init(int n_) {
+        n = n_;
+        while (bound < n) {
+            bound = bound << 1;
+        }
+        size = 2 * bound - 1;
+        T = vector<long long>(size, 0);
+//        updSet = vector<long long>(size, INF);
+        updAdd = vector<long long>(size, 0);
+    }
+
+    long long &operator[](int i) {
+        return T[bound - 1 + i];
+    }
+
+    void precalc() {
+        for (int v = bound - 2; v >= 0; v--) {
+            T[v] = min(T[2 * v + 1], T[2 * v + 2]);
+        }
+    }
+
+    /**
+ * вернуть минимальный элемент на подотрезке.
+ * @param a левая граница исходного отрезка.
+ * @param b правая граница исходного отрезка.
+ * @return минимальный элемент.
+ */
+    long long rsq(int i, int j) {
+        return rsq(0, 0, bound - 1, i, j);
+    }
+
+//    /**
+//    * групповая операция обновления - установить значение  на отрезке.
+//    * @param x значение
+//    */
+//    void updateSet(int i, int j, long long x) {
+//        updateSet(0, 0, bound - 1, i, j, x);
+//    }
+
+/**
+ * групповая операция обновления - добавить значение на отрезке.
+ * @param x значение
+ */
+    void updateAdd(int i, int j, long long x) {
+        updateAdd(0, 0, bound - 1, i, j, x);
+    }
+
+    void update(int i, long long x) {
+        T[i + bound - 1] = x;
+        for (int v = bound - 2; v >= 0; v--) {
+            T[v] = T[2 * v + 1] + T[2 * v + 2];
+        }
+    }
+
+private:
+
+//    void updateSet(int v, int l, int r, int a, int b, long long x) {
+//        push(v, l, r);
+//        if (l > b || r < a) {
+//            return;
+//        }
+//        if (l >= a && r <= b) {
+//            updSet[v] = x;
+//            updAdd[v] = 0;
+//            return;
+//        }
+//        int m = (l + r) >> 1;
+//        auto v1 = 2 * v + 1;
+//        updateSet(v1, l, m, a, b, x);
+//        updateSet(v1 + 1, m + 1, r, a, b, x);
+//        T[v] = min(get(v1), get(v1 + 1));
+//    }
+
+    void updateAdd(int v, int l, int r,
+                   int a, int b, long long x) {
+        push(v, l, r);
+        if (l > b || r < a) {
+            return;
+        }
+        if (l >= a && r <= b) {
+            updAdd[v] += x;
+            return;
+        }
+        int m = (l + r) >> 1;
+        updateAdd(2 * v + 1, l, m, a, b, x);
+        updateAdd(2 * v + 2, m + 1, r, a, b, x);
+        T[v] = get(2 * v + 1) + get(2 * v + 2);
+    }
+
+
+    long long rsq(int v, int l, int r, int a, int b) {
+        push(v, l, r);
+        if (l > b || r < a) {
+            return 0;
+        }
+        if (l >= a && r <= b) {
+            return get(v);
+        }
+        int m = (l + r) >> 1;
+        auto lv = rsq(2 * v + 1, l, m, a, b);
+        auto rv = rsq(2 * v + 2, m + 1, r, a, b);
+        return lv + rv;
+    }
+
+
+/**
+ * Получить элемент из дерева.
+ * @param T вектор дерева отрезков.
+ * @param updSet вектор операций изменения (set).
+ * @param updAdd вектор операций изменения (add).
+ * @param v номер вершины.
+ * @return элемент в вершине.
+ */
+    long long get(int v) {
+//        if (updSet[v] != INF) {
+//            return updSet[v] + updAdd[v];
+//        }
+        return T[v] + updAdd[v];
+    }
+
+/**
+ * Протолкнуть изменения ниже.
+ * @param l левая граница.
+ * @param r правая граница.
+ */
+    void push(int v, int l, int r) {
+        if (l == r) {
+//            if (updSet[v] != INF) {
+//                T[v] = updSet[v];
+//            }
+            T[v] += updAdd[v];
+        } else {
+//            if (updSet[v] != INF) {
+//                updSet[2 * v + 1] = updSet[v];
+//                updSet[2 * v + 2] = updSet[v];
+//
+//                updAdd[2 * v + 1] = updAdd[v];
+//                updAdd[2 * v + 2] = updAdd[v];
+//            } else {
+            updAdd[2 * v + 1] += updAdd[v];
+            updAdd[2 * v + 2] += updAdd[v];
+//            }
+            T[v] = min(get(2 * v + 1), get(2 * v + 2));
+        }
+//        updSet[v] = INF;
+        updAdd[v] = 0;
+    }
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+struct SegmentTree2d {
+    int ny;
+    int nx;
+    int bound = 1;
+    long long size = 0;
+    vector<SegmentTree> T;
+    vector<SegmentTree> updAdd;
+
+    explicit SegmentTree2d(int y, int x) : ny(y) {
+        while (bound < ny) {
+            bound = bound << 1;
+        }
+        size = 2 * bound - 1;
+        nx = x;
+        T = vector<SegmentTree>(size); // , SegmentTree(nx )
+        updAdd = vector<SegmentTree>(size); //, SegmentTree(nx )
+        for (int i = 0; i < size; ++i) {
+            T[i].init(nx);
+            updAdd[i].init(nx);
+        }
+
+    }
+
+//    SegmentTree &operator[](int i) {
+//        return T[bound - 1 + i];
+//    }
+//
+//    void precalc() {
+//        for (int v = bound - 2; v >= 0; v--) {
+//            T[v] = min(T[2 * v + 1], T[2 * v + 2]);
+//        }
+//    }
+
+    /**
+ * вернуть минимальный элемент на подотрезке.
+ * @param a левая граница исходного отрезка.
+ * @param b правая граница исходного отрезка.
+ * @return минимальный элемент.
+ */
+    long long rsq(int x1, int y1, int x2, int y2) {
+        return rsq(1, 0, y1, y2, 0, bound - 1, 0, x1, x2);
+    }
+
+/**
+ * групповая операция обновления - добавить значение на отрезке.
+ * @param x значение
+ */
+//    void updateAdd(int i, int j, long long x) {
+//        updateAdd(0, 0, bound - 1, i, j, x);
+//    }
+    void update(int x, int y, long long w) {
+        update(1, 0, 0, bound - 1, y, 0, x, w);
+    }
+
+private:
+
+//    void updateAdd(int v, int l, int r,
+//                   int a, int b, long long x) {
+//        push(v, l, r);
+//        if (l > b || r < a) {
+//            return;
+//        }
+//        if (l >= a && r <= b) {
+//            updAdd[v] += x;
+//            return;
+//        }
+//        int m = (l + r) >> 1;
+//        updateAdd(2 * v + 1, l, m, a, b, x);
+//        updateAdd(2 * v + 2, m + 1, r, a, b, x);
+//        T[v] = min(get(2 * v + 1), get(2 * v + 2));
+//    }
+
+    void update(int k, int vy, int l, int r, int y1, int vx, int x1, long long w) {
+        if (k == 2) {
+            T[vy].update(x1, w);
+            return;
+        }
+        if (l > y1 || r < y1) {
+            return;
+        }
+        if (l == r) {
+            update(k + 1, vy, 0, nx - 1, y1, vx, x1, w);
+            return;
+        }
+        int m = (l + r) >> 1;
+        if (m >= y1) {
+            update(k, 2 * vy + 1, l, m, y1, vx, x1, w);
+        } else {
+            update(k, 2 * vy + 2, m + 1, r, y1, vx, x1, w);
+        }
+        update(k + 1, vy, 0, nx - 1, y1, vx, x1, w);
+    }
+
+    long long rsq(int k, int vy, int l, int r, int y1, int y2, int vx, int x1, int x2) {
+        if (k == 2) { // одномерный
+            return T[vy].rsq(x1, x2);
+        }
+//        push(v, l, r);
+        if (l > y2 || r < y1) {
+            return 0;
+        }
+        if (l >= y1 && r <= y2) {
+            return rsq(k + 1, vy, 0, nx - 1, y1, y2, 0, x1, x2);
+        }
+        int m = (l + r) >> 1;
+        auto lv = rsq(k, 2 * vy + 1, l, m, y1, y2, vx, x1, x2);
+        auto rv = rsq(k, 2 * vy + 2, m + 1, r, y1, y2, vx, x1, x2);
+        return lv + rv;
+    }
+
+
+/**
+ * Получить элемент из дерева.
+ * @param T вектор дерева отрезков.
+ * @param updSet вектор операций изменения (set).
+ * @param updAdd вектор операций изменения (add).
+ * @param v номер вершины.
+ * @return элемент в вершине.
+ */
+//    long long get(int v) {
+//        return T[v] + updAdd[v];
+//    }
+
+/**
+ * Протолкнуть изменения ниже.
+ * @param l левая граница.
+ * @param r правая граница.
+ */
+//    void push(int v, int l, int r) {
+//        if (l == r) {
+//            T[v] += updAdd[v];
+//        } else {
+//                updAdd[2 * v + 1] += updAdd[v];
+//                updAdd[2 * v + 2] += updAdd[v];
+//            T[v] = min(get(2 * v + 1), get(2 * v + 2));
+//        }
+//        updAdd[v] = 0;
+//    }
+};
+
+int main() {
+    int x, y;
+    cin >> x >> y;
+    int n;
+    cin >> n;
+
+    SegmentTree2d tree(y, x);
+
+    for (int row = 0; row < n; ++row) {
+        int command, x1, y1, x2, y2;;
+        cin >> command >> x1 >> y1 >> x2 >> y2;
+        if (command == 1) {
+            long w;
+            cin >> w;
+            for (int i = x1; i <= x2; ++i) {
+                for (int j = y1; j <= y2; ++j) {
+                    tree.update(i - 1, j - 1, w);
+                }
+            }
+//            tree.updateAdd(x1,y1,x2,y2,w);
+        } else {
+            cout << tree.rsq(x1 - 1, y1 - 1, x2 - 1, y2 - 1) << endl;
+        }
+    }
+    return 0;
+}
+/**
+8 8
+3
+1 3 3 8 8 2
+1 1 1 2 2 1
+2 2 2 3 3
+
+3
+
+8 8
+3
+1 3 3 2
+1 2 2 4
+2 2 2 3 3
+
+
+*/

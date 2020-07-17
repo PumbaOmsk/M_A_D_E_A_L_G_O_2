@@ -1,0 +1,311 @@
+#include <iostream>
+#include <unordered_map>
+#include <list>
+
+using namespace std;
+
+struct Node {
+//    explicit Node(int _index) : index(_index), l(0), r(0),parent(nullptr) {}
+
+    Node(int _index, int _l, int _r,Node* _parent) : index(_index), l(_l), r(_r),parent(_parent) {}
+    ~Node(){
+        for (auto child:childs) {
+            delete child.second;
+        }
+    }
+
+    int len(){ return r-l;}
+
+    int l, r;
+    Node *parent;
+    std::unordered_map<char, Node *> childs;
+    int index;
+};
+
+struct Position {
+    explicit Position(Node *_v, int _depth,int _idx) : v(_v), depth(_depth),idx(_idx) {}
+
+    Node *v;
+    int idx;
+    int depth;
+};
+
+class SuffixTree {
+public:
+    ~SuffixTree();
+    void print();
+    void printEdges();
+    void add(const string &s);
+
+
+private:
+    string base;
+    int currentIndex = 0;
+    Node *root = new Node(++currentIndex,0,0, nullptr);
+
+//    void appendSuffix(const string &s);
+    void appendSuffix(int l, int r);
+//    void append(const string &s);
+    void append(int l, int r);
+
+    void insert(char c);
+
+    Position find(const Position &pos, int l, int r);
+//    Position find(const Position &pos, const string &s);
+
+    void insert(const Position &pos, int l, int r);
+//    void insert(const Position &pos, const string &s);
+
+    void print(Node *pNode);
+};
+SuffixTree::~SuffixTree(){
+    delete root;
+}
+//void SuffixTree::insert(char c) {
+//    Node *cur = root;
+//    while (true) {
+//        auto child = cur->childs.find(c);
+//        if (child == cur->childs.end()) {
+//            cur->childs[c] = new Node(++currentIndex);
+//            return;
+//        } else {
+//            cur = child->second;
+//        }
+//    }
+//}
+bool comp(Node* e1,Node*e2){
+    return e1->l<e2->l;
+}
+void SuffixTree::printEdges(){
+    list<Node*> q;
+    q.push_back(root);
+//    queue<Node*> q;
+//    q.push(root);
+    
+//    while (!q.empty()){
+    for (auto it = q.begin();it!=q.end();it++) {
+        auto cur = *it;
+        for (auto child:cur->childs) {
+            q.push_back(child.second);
+        }
+    }
+    q.sort(comp);
+    cout<<q.size()<<" "<<q.size()-1<<endl;
+    for(auto cur:q){
+        if(cur->parent== nullptr)
+            continue;
+        cout<<cur->parent->index<<" "<<cur->index<<" "<<cur->l+1<<" "<<cur->r<<endl;
+    }
+//        auto cur = q.front();
+//        q.pop();
+        
+        
+//    }
+}
+
+void SuffixTree::print(Node *pNode) {
+    if (pNode == nullptr)
+        return;
+    if(pNode->parent== nullptr){
+        cout<<pNode->index << ":" << "root";
+    } else{
+        cout<<pNode->parent->index<<"->"<< pNode->index;
+    }
+    cout << ":" << base.substr(pNode->l,pNode->len())<<"["<<pNode->l<<","<< pNode->r<< "):";
+    for (auto child:pNode->childs) {
+        cout << child.first << " ";
+    }
+    cout << endl;
+
+    for (auto child:pNode->childs) {
+        cout<<child.first<<" ";
+        print(child.second);
+    }
+}
+
+void SuffixTree::print() {
+    print(root);
+}
+
+Position SuffixTree::find(const Position &pos, int l, int r) {
+    Node *cur = pos.v;
+    int _depth = pos.depth;
+    int idx=pos.idx;
+    while (l < r) {
+        char c = base[l];
+        while(idx<cur->len()){
+            if(base[cur->l+idx]!=c){
+                return Position(cur, _depth,idx);
+            }
+            _depth++;
+            idx++;
+            ++l;
+            c = base[l];
+        }
+        auto child = cur->childs.find(c);
+        if (child == cur->childs.end()) {
+            break;
+        } else {
+            cur = child->second;
+            idx=0;
+        }
+    }
+    return Position(cur, _depth,idx);
+}
+//Position SuffixTree::find(const Position &pos, const string &s) {
+//    Node *cur = pos.v;
+//
+//    int i = 0;
+//    while (i < s.length()) {
+//        char c = s[i];
+//        auto child = cur->childs.find(c);
+//        if (child == cur->childs.end()) {
+//            break;
+//        } else {
+//            cur = child->second;
+//        }
+//        ++i;
+//    }
+//    return Position(cur, i);
+//}
+
+//void SuffixTree::insert(const Position &pos, const string &s) {
+//    int i = pos.depth;
+//    Node *cur = pos.v;
+//    while (i < s.length()) {
+//        char c = s[i];
+//        cur = cur->childs[c] = new Node(++currentIndex);
+//        ++i;
+//    }
+//}
+
+void SuffixTree::insert(const Position &pos, int l, int r) {
+    int _depth = pos.depth;
+    if(l+_depth>=r)
+        return;
+    int _idx = pos.idx;
+    Node *cur = pos.v;
+    char c = base[l+_depth];
+    if(_idx==cur->len()){ // если находимся на конце строки
+        if(cur->parent!= nullptr && cur->childs.empty()) { // если детей нет
+            cur->r = r;
+            return;
+        }
+        cur->childs[c] = new Node(++currentIndex,l+_depth,r,cur);
+        return;
+
+    } else{ // если находимся в середине
+        auto newNode = new Node(++currentIndex,cur->l,cur->l+_idx,cur->parent);
+        cur->parent->childs[base[cur->l]] =newNode;
+        auto newLeaf = new Node(++currentIndex,l+_depth,r,newNode);
+        newNode->childs[base[l+_depth]] = newLeaf;
+        newNode->childs[base[cur->l+_idx]] = cur;
+        cur->parent = newNode;
+        cur->l += _idx;
+    } // в начале не можем, если длина 0.
+
+
+//    if(cur->childs.empty()){ // если детей нет
+//        cur->childs[c] = new Node(++currentIndex,i,r,cur);
+//    } else{
+
+
+
+//        for (auto child:cur->childs) {
+//            child.second->l = i;
+//            child.second->parent = newNode;
+//            newNode[child.first] = child.second;
+//        }
+//    }
+//    while (i < r) {
+//        char c = base[i];
+//        cur = cur->childs[c] = new Node(++currentIndex);
+//        ++i;
+//    }
+}
+
+void SuffixTree::appendSuffix(int l, int r) {
+    Position pos(root, 0,0);
+    pos = find(pos, l, r);
+    insert(pos, l, r);
+}
+//void SuffixTree::appendSuffix(const string &s) {
+//    Position pos(root, 0);
+//    pos = find(pos, s);
+//    insert(pos, s);
+////    int i = pos.depth;
+////    Node *cur=pos.v;
+////    while(i < s.length()) {
+////        char c = s[i];
+////        cur=cur->childs[c] = new Node(++currentIndex);
+////        ++i;
+////    }
+//}
+
+void SuffixTree::add(const string &s) {
+    int old_len = static_cast<int>(base.length());
+    base = base + s;
+    for (int i = old_len + 1; i <= base.length(); ++i) {
+        append(0,i);
+    }
+}
+
+void SuffixTree::append(int l,int r) {
+    for (int left = r-1; left >= l; --left) {
+//        cout<<left<<","<<r<<"-----------------------------"<<endl;
+        appendSuffix(left, r);
+//        print();
+
+    }
+//    Node *cur= root;
+////    Position cur(root);
+////    cur = find(cur,s);
+//    int i=0;
+//    while(i < s.length()) {
+//        char c = s[i];
+//        auto child = cur->childs.find(c);
+//        if (child == cur->childs.end()) {
+//            break;
+//        } else {
+//            cur = child->second;
+//        }
+//        ++i;
+//    }
+//    while(i < s.length()) {
+//        char c = s[i];
+//        cur=cur->childs[c] = new Node(++currentIndex);
+//        ++i;
+//    }
+}
+
+int main() {
+    string s;// = "ababb";
+    cin>>s;
+    SuffixTree tree;
+    tree.add(s);
+//    tree.print();
+    tree.printEdges();
+    return 0;
+}
+
+/*
+0->1:root:$ a b
+1->13:$:
+1->2:a:b
+2->4:b:b a
+4->10:b:$
+10->16:$:
+4->6:a:b
+6->8:b:b
+8->12:b:$
+12->18:$:
+1->3:b:$ a b
+3->14:$:
+3->5:a:b
+5->7:b:b
+7->11:b:$
+11->17:$:
+3->9:b:$
+9->15:$:
+
+ * */

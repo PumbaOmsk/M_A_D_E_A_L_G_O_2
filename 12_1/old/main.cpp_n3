@@ -1,0 +1,127 @@
+#include <iostream>
+#include <unordered_map>
+
+using namespace std;
+
+struct Node {
+    explicit Node(int _index) : index(_index) {}
+
+    std::unordered_map<char, Node *> childs;
+    int index;
+};
+
+struct Position {
+    explicit Position(Node *_v) : v(_v) {}
+
+    Node *v;
+};
+
+class SuffixTree {
+public:
+    void insert(char c);
+
+    void print();
+
+    void append(const string &s);
+    
+
+private:
+    int currentIndex = 0;
+    Node *root = new Node(++currentIndex);
+
+    void appendSuffix(const string &s);
+    
+    void print(Node *pNode, const string &cur, int parent_index);
+};
+
+void SuffixTree::insert(char c) {
+    Node *cur = root;
+    while (true) {
+        auto child = cur->childs.find(c);
+        if (child == cur->childs.end()) {
+            cur->childs[c] = new Node(++currentIndex);
+            return;
+        } else {
+            cur = child->second;
+        }
+    }
+}
+
+void SuffixTree::print(Node *pNode, const string &cur, int parent_index) {
+    if (pNode == nullptr)
+        return;
+    cout << parent_index << "->" << pNode->index << ":" << cur << ":";
+    for (auto child:pNode->childs) {
+        cout << child.first << " ";
+    }
+    cout << endl;
+    for (auto child:pNode->childs) {
+        print(child.second, string(1, child.first), pNode->index);
+    }
+}
+
+void SuffixTree::print() {
+    print(root, "root", 0);
+}
+//Position SuffixTree::find(const Position &pos,const string &s) {
+//
+//}
+void SuffixTree::appendSuffix(const string &s) {
+    Node *cur= root;
+//    Position cur(root);
+//    cur = find(cur,s);
+    int i=0;
+    while(i < s.length()) {
+        char c = s[i];
+        auto child = cur->childs.find(c);
+        if (child == cur->childs.end()) {
+            break;
+        } else {
+            cur = child->second;
+        }
+        ++i;
+    }
+    while(i < s.length()) {
+        char c = s[i];
+        cur=cur->childs[c] = new Node(++currentIndex);
+        ++i;
+    }
+}
+void SuffixTree::append(const string &s) {
+    auto length = s.length();
+    for (int i = 1; i <= length; ++i) {
+        auto ss = s.substr(length - i, i);
+        appendSuffix(ss);
+    }
+//    Node *cur= root;
+////    Position cur(root);
+////    cur = find(cur,s);
+//    int i=0;
+//    while(i < s.length()) {
+//        char c = s[i];
+//        auto child = cur->childs.find(c);
+//        if (child == cur->childs.end()) {
+//            break;
+//        } else {
+//            cur = child->second;
+//        }
+//        ++i;
+//    }
+//    while(i < s.length()) {
+//        char c = s[i];
+//        cur=cur->childs[c] = new Node(++currentIndex);
+//        ++i;
+//    }
+}
+
+
+int main() {
+    string s = "ababb";
+    SuffixTree tree;
+    for (int i = 1; i <= s.length(); ++i) {
+        auto ss = s.substr(0, i);
+        tree.append(ss);
+    }
+    tree.print();
+    return 0;
+}
